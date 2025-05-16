@@ -1,0 +1,28 @@
+{# views/register.ejs #}
+
+<%- include('partials/header', { pageTitle: 'Register' }) %> {# Include the header, passing the page title #}
+
+<h2>Register New User</h2> {# A heading for the page #}
+
+{# --- The Registration Form Starts Here --- #}
+<form method="POST" action="/register"> {# Form: Will send data using POST to the /register URL #}
+
+    <div> {# A container div for the username field group #}
+        <label for="username">Username:</label> {# Label linked to the username input #}
+        <input type="text" id="username" name="username" required> {# Text input for username, name="username" is key #}
+    </div> {# End of username group div #}
+
+    <div> {# A container div for the password field group #}
+        <label for="password">Password:</label> {# Label linked to the password input #}
+        <input type="password" id="password" name="password" required> {# Password input, name="password" is key #}
+    </div> {# End of password group div #}
+
+    <div> {# A container div for the submit button #}
+        <button type="submit">Register</button> {# The button that submits the form #}
+    </div> {# End of button group div #}
+
+</form> {# --- The Registration Form Ends Here --- #}
+
+<p>Already have an account? <a href="/login">Login here</a>.</p> {# A simple paragraph with a link (we'll make the login page later) #}
+
+<%- include('partials/footer') %> {# Include the footer #}

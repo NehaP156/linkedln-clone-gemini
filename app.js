@@ -1,29 +1,50 @@
-// 1. Import the Express.js package
+// app.js - Complete Code at the End of Day 5 (without explanations)
+
 const express = require('express');
 const path = require('path');
-// 2. Create an instance of the Express application
-const app = express();
-app.set('view engine', 'ejs');
 
-// 3. Define the port number the server will listen on
-// process.env.PORT is used by hosting services like Render
-// || 3000 means if process.env.PORT is not set (like on your computer), use 3000
+const app = express();
 const port = process.env.PORT || 3000;
 
-// 4. Define a "route" - how the server responds to a specific web address (path) and method (like GET)
-
-// This route handles GET requests to the root path ('/')
+app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.urlencoded({ extended: true }));
+// app.use(express.json()); // Optional JSON body parser
+
 app.get('/', (req, res) => {
-  res.render('home', {
-    userName: 'New User',
-    pageTitle: 'Homepage' // Add the pageTitle variable
-  });
+  res.render('home', { userName: 'New User', pageTitle: 'Homepage' });
 });
 
-// 5. Start the server - tell it to listen for incoming requests on the defined port
+app.get('/register', (req, res) => {
+  res.render('register', { pageTitle: 'Register' });
+});
+
+app.post('/register', (req, res) => {
+    const username = req.body.username;
+    const password = req.body.password;
+
+    console.log('--- Received Registration Data ---');
+    console.log('Username is:', username);
+    console.log('Password is:', password);
+    console.log('------------------------------------');
+
+    res.redirect('/');
+});
+
+// Placeholder routes for future days (can be added now or later)
+/*
+app.get('/login', (req, res) => { res.render('login', { pageTitle: 'Login' }); });
+app.post('/login', (req, res) => { });
+app.get('/logout', (req, res) => { });
+app.get('/profile', (req, res) => { res.render('profile', { pageTitle: 'Profile', user: {} }); });
+app.get('/users', (req, res) => { res.render('user_list', { pageTitle: 'Users', users: [] }); });
+app.get('/users/:username', (req, res) => { res.render('profile_public', { pageTitle: 'User Profile', user: {} }); });
+app.get('/profile/edit', (req, res) => { res.render('edit_profile', { pageTitle: 'Edit Profile', user: {} }); });
+app.post('/profile/edit', (req, res) => { });
+*/
+
+
 app.listen(port, () => {
-  // This function runs once the server has successfully started
   console.log(`Server is running at http://localhost:${port}/`);
   console.log('Press Ctrl+C to stop the server.');
 });
