@@ -1,0 +1,14 @@
+body {
+  font-family: sans-serif; /* Use a common font */
+  margin: 20px; /* Add space around the content */
+  background-color: #f4f4f4; /* Light gray background */
+  line-height: 1.6;
+}
+
+h1 {
+  color: #d42222; /* Dark gray color for headings */
+}
+
+p {
+  color: #555; /* Slightly lighter gray for paragraphs */
+}

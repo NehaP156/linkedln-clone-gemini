@@ -1,8 +1,9 @@
 // 1. Import the Express.js package
 const express = require('express');
-
+const path = require('path');
 // 2. Create an instance of the Express application
 const app = express();
+app.set('view engine', 'ejs');
 
 // 3. Define the port number the server will listen on
 // process.env.PORT is used by hosting services like Render
@@ -12,9 +13,12 @@ const port = process.env.PORT || 3000;
 // 4. Define a "route" - how the server responds to a specific web address (path) and method (like GET)
 
 // This route handles GET requests to the root path ('/')
+app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => {
-  // When someone visits the root path, send this text as the response
-  res.send('Hello from your first Express!');
+  res.render('home', {
+    userName: 'New User',
+    pageTitle: 'Homepage' // Add the pageTitle variable
+  });
 });
 
 // 5. Start the server - tell it to listen for incoming requests on the defined port
