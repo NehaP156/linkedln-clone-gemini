@@ -4,6 +4,10 @@ const path = require('path');
 const db = require('./models'); // Your database models setup (from Day 6)
 const bcrypt = require('bcryptjs'); // Day 7: Import bcryptjs for password hashing
 
+// Day 8: Session Management Imports
+const session = require('express-session');
+const SequelizeStore = require('connect-session-sequelize')(session.Store); // Import and initialize
+
 // --- MIDDLEWARE ---
 
 // Middleware to parse URL-encoded bodies (from HTML forms)
@@ -21,45 +25,76 @@ app.set('views', path.join(__dirname, 'views'));
 // Serve static files (like CSS, images, client-side JS) from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+
+// Day 8: Configure Sequelize Store for sessions
+const sessionStore = new SequelizeStore({
+    db: db.sequelize, // Use your existing Sequelize connection
+    tableName: 'Sessions' // The table you created in Task 3
+});
+
+// Day 8: Configure and use express-session middleware
+app.use(session({
+    secret: 'YOUR_VERY_STRONG_RANDOM_SECRET_KEY_HERE', // <--- IMPORTANT: REPLACE THIS!
+    // Example: 'df12b6a9c7e0f8d1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5' (a long random string)
+    store: sessionStore, // Use the Sequelize store for persistence
+    resave: false, // Don't save session if unmodified
+    saveUninitialized: false, // Don't create session until something stored
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24 // Session expires in 24 hours (in milliseconds)
+        // You might want to add 'secure: true' in production for HTTPS
+    }
+}));
+
+// Day 8: Sync the session store (creates the Sessions table if it doesn't exist)
+// This line can be kept, but the migration in Task 3 is the primary way we create the table.
+sessionStore.sync();
+
+// Day 8: Authentication Middleware (from Task 6)
+function isAuthenticated(req, res, next) {
+    if (req.session.userId) { // Check if user ID exists in the session
+        next(); // User is authenticated, proceed to the next middleware/route handler
+    } else {
+        console.log('Unauthorized access. Redirecting to login.');
+        // Redirect to login, adding a query param to inform the login page
+        res.redirect('/login?auth_required=true');
+    }
+}
+
 // --- ROUTES ---
 
-// GET route for the home page
+// GET route for the home page (Updated for Day 8, Task 9 anticipation)
 app.get('/', (req, res) => {
-  res.render('home'); // Assuming you have a views/home.ejs file
+  res.render('home', {
+      // Pass loggedIn and username to the EJS template for conditional rendering
+      loggedIn: req.session.userId ? true : false,
+      username: req.session.username || 'Guest' // Default to 'Guest' if not logged in
+  });
 });
 
 // GET route for the registration page (Day 5/6 setup)
 app.get('/register', (req, res) => {
-  res.render('register', { error: null }); // Pass null for error initially
+  res.render('register', { error: null });
 });
 
 // POST route for user registration (Day 7, Task 4: Password Hashing)
 app.post('/register', async (req, res) => {
-  const { username, email, password } = req.body; // Extract username, email, and plain text password
+  const { username, email, password } = req.body;
 
   try {
-    // 1. Generate a salt (a random string for password hashing)
-    // The '10' is the number of salt rounds (cost factor). Higher is slower but more secure.
     const salt = await bcrypt.genSalt(10);
-
-    // 2. Hash the password with the generated salt
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 3. Create the user in the database using the HASHED password
-    // Ensure 'password' here matches your database column name (likely 'password' from migration)
     const newUser = await db.User.create({
       username,
       email,
-      passwordHash: hashedPassword, // Store the hashed password here
+      passwordHash: hashedPassword,
     });
 
     console.log('User registered successfully:', newUser.username);
-    // Redirect to the login page, signaling successful registration via query param
-    res.redirect('/login?registered=true');
+    res.redirect('/login?registered=true'); // Redirect to login with a flag
 
   } catch (error) {
     console.error('Error during user registration:', error);
-    // Handle specific error types, e.g., unique constraint violation for username/email
     if (error.name === 'SequelizeUniqueConstraintError') {
       res.render('register', { error: 'Username or email already exists. Please choose another.' });
     } else {
@@ -68,56 +103,66 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// GET route for the login page (Day 7, Task 5: Display Login Form)
+// GET route for the login page (Day 7, Task 5)
 app.get('/login', (req, res) => {
-  // Check if we were redirected from a successful registration (via query param)
-  const registered = req.query.registered === 'true';
-  res.render('login', { error: null, registered: registered });
+  const registered = req.query.registered === 'true'; // Check if redirected from successful registration
+  const authRequired = req.query.auth_required === 'true'; // Check if redirected for authentication
+  let errorMessage = null;
+
+  if (authRequired) {
+      errorMessage = 'Please log in to access this page.';
+  } else if (req.query.error) {
+      errorMessage = req.query.error; // Generic error from login attempt
+  }
+
+  res.render('login', { error: errorMessage, registered: registered });
 });
 
-// POST route for user login (Day 7, Task 6: Implement Login Logic)
+// POST route for user login (Day 7, Task 6 & Day 8, Task 5: Session Storage)
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body; // Get username/email and plain text password from the form
+  const { username, password } = req.body;
 
   try {
-    // 1. Find the user by username or email in the database
     const user = await db.User.findOne({
       where: {
-        [db.Sequelize.Op.or]: [ // Use Sequelize.Op.or to search by either username OR email
+        [db.Sequelize.Op.or]: [
           { username: username },
           { email: username }
         ]
       }
     });
+ console.log("DEBUG: User object retrieved from DB:", user);
 
-    // 2. Check if user exists
     if (!user) {
       console.log(`Login failed: User '${username}' not found.`);
-      // Render login page with an error message
       return res.render('login', { error: 'Invalid username or password.', registered: false });
     }
 
- // --- ADD THESE LINES FOR DEBUGGING ---
-    console.log("DEBUG: Plain text password (from req.body):", password);
-    console.log("DEBUG: Type of plain text password:", typeof password);
-    console.log("DEBUG: Stored user object from DB:", user);
-    console.log("DEBUG: Type of user.password (from DB):", typeof user.password);
-    console.log("DEBUG: Value of user.password (from DB):", user.password);
-    // --- END DEBUGGING LINES ---
-
-    // 3. Compare the provided plain password with the stored hashed password
-    // bcrypt.compare() automatically handles salting and hashing internally.
-    const passwordMatch = await bcrypt.compare(password, user.passwordHash); // 'user.password' is the stored hash
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
     if (passwordMatch) {
       console.log(`Login successful for user: ${user.username}`);
-      // TODO (Future Day): In a real application, you would set up a session here
-      // (e.g., using 'express-session') to keep the user logged in across requests.
-      // For now, we'll just redirect to a simple dashboard page.
-      res.redirect('/dashboard');
+
+      // Day 8, Task 5: Store user information in the session
+      req.session.userId = user.id;
+      req.session.username = user.username; // Store username for display
+
+      console.log("DEBUG LOGIN: User data stored in session:");
+      console.log("DEBUG LOGIN: req.session.userId =", req.session.userId);
+      console.log("DEBUG LOGIN: req.session.username =", req.session.username);
+      // It's good practice to save the session explicitly before redirecting
+     
+      req.session.save((err) => {
+          if (err) {
+              console.error('Error saving session:', err);
+              // Handle session save error, e.g., redirect to login with error
+              return res.render('login', { error: 'Login failed due to session issue.', registered: false });
+          }
+          res.redirect('/dashboard'); // Redirect to the dashboard on success
+      });
+
     } else {
       console.log(`Login failed: Incorrect password for user: ${user.username}`);
-      // Render login page with an error message
       return res.render('login', { error: 'Invalid username or password.', registered: false });
     }
 
@@ -127,23 +172,43 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// GET route for the dashboard page (Day 7, Task 7: Simple Dashboard)
-app.get('/dashboard', (req, res) => {
-  // In a real app, you'd protect this route and pass user-specific data
-  res.render('dashboard'); // Renders your views/dashboard.ejs file
+// GET route for the dashboard page (Day 7, Task 7 & Day 8, Task 7: Protected Route)
+// 'isAuthenticated' middleware ensures only logged-in users can access this
+app.get('/dashboard', isAuthenticated, (req, res) => {
+ console.log("DEBUG: Accessing /dashboard route.");
+ console.log("DEBUG: req.session.userId:", req.session.userId);
+ console.log("DEBUG: req.session.username:", req.session.username); // Check if username exists
+ console.log("DEBUG: Data being passed to dashboard.ejs:", { username: req.session.username || 'User' });
+  // We can access req.session.username here because it was stored during login
+  res.render('dashboard', { username: req.session.username || 'User' });
+});
+
+// NEW: GET route for logout (Day 8, Task 8)
+app.get('/logout', (req, res) => {
+    // Destroy the session data from the store
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Error destroying session:', err);
+            // If there's an error, maybe just redirect to home/login without clearing cookie
+            return res.redirect('/dashboard');
+        }
+        // Clear the session cookie from the user's browser
+        // 'connect.sid' is the default name for the session cookie
+        res.clearCookie('connect.sid');
+        console.log('User logged out successfully.');
+        res.redirect('/'); // Redirect to the home page after logout
+    });
 });
 
 
 // --- SERVER STARTUP AND DATABASE SYNCHRONIZATION ---
 
-// Define the port the server will listen on
 const PORT = process.env.PORT || 3000;
 
-// Start the server and synchronize database models (creates tables if they don't exist)
-// Note: For production deployments, you typically run migrations explicitly,
-// but for development, db.sequelize.sync() is convenient.
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  // Sync database models (creates tables if they don't exist)
+  // For production, you typically run migrations explicitly.
   db.sequelize.sync()
     .then(() => {
       console.log('Database synced successfully');
