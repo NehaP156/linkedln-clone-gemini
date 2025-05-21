@@ -1,7 +1,20 @@
-<%- include('partials/header') %> {# Include the header partial #}
-
-<h1>Welcome to My LinkedIn Mimic (Node.js Version)!</h1>
-<p>This page is served using partials.</p>
-<p>Hello, <%= userName %>!</p> {# This content is unique to the home page #}
-
-<%- include('partials/footer') %> {# Include the footer partial #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to linkedln-clone-gemini</title>
+    <link rel="stylesheet" href="/css/style.css"> 
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to LinkedIn clone gemini!</h1>
+        <p>Your simplified social networking experience.</p>
+        
+        <div class="links">
+            <p>Already have an account? <a href="/login" class="btn">Login</a></p>
+            <p>New here? <a href="/register" class="btn">Register</a></p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,34 +1,25 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
-  class User extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
-    static associate(models) {
-      // define association here
-    }
-  }
-User.init({
+  const User = sequelize.define('User', {
     username: {
-      type: DataTypes.STRING, // or DataTypes.STRING(80)
-      allowNull: false,      // <-- Add this (or ensure it's there)
-      unique: true           // <-- Add this line
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true
     },
-    passwordHash: {
-      type: DataTypes.STRING(128), // <-- Update string length (e.g., 128 or 256)
-      allowNull: false       // <-- Add this (or ensure it's there)
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true
     },
-    bio: DataTypes.TEXT,      // or DataTypes.STRING(255) if you prefer a shorter bio
-    // Sequelize automatically adds 'id', 'createdAt', and 'updatedAt' columns by default
+    passwordHash: { // <--- CHANGE THIS LINE: Renamed from 'password' to 'passwordHash'
+      type: DataTypes.STRING, // Make sure it's a STRING to store the hash
+      // allowNull: false, // You can keep or remove this based on your preference for future social login integration
+    },
+    // Add other fields as needed for your user profile
+    // e.g., firstName, lastName, headline, etc.
   }, {
-    sequelize,
-    modelName: 'User',
+    tableName: 'users', // Ensure this matches your migration table name
+    timestamps: true    // Ensure timestamps are enabled (createdAt, updatedAt)
   });
+
   return User;
 };
- 
