@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discover Users | LinkedIn linkedln-clone-gemini</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Discover Other Users</h1>
+
+        <% if (users && users.length > 0) { %>
+            <ul class="user-list">
+                <% users.forEach(user => { %>
+                    <li>
+                        <h3><%= user.username %></h3>
+                        <p><%= user.email %></p>
+                        <% if (loggedInUserId) { %>
+                            <%
+                                const isFollowing = followingIds.includes(user.id);
+                            %>
+                            <form action="/users/toggle-follow" method="POST" class="inline-form">
+                                <input type="hidden" name="targetUserId" value="<%= user.id %>">
+                                <button type="submit" class="btn <%= isFollowing ? 'btn-unfollow' : 'btn-follow' %>">
+                                    <%= isFollowing ? 'Unfollow' : 'Follow' %>
+                                </button>
+                            </form>
+                        <% } %>
+                    </li>
+                <% }); %>
+            </ul>
+        <% } else { %>
+            <p>No other users registered yet!</p>
+        <% } %>
+
+        <div class="links">
+            <p><a href="/dashboard">Back to Dashboard</a></p>
+            <p><a href="/logout" class="btn">Logout</a></p>
+        </div>
+    </div>
+</body>
+</html>

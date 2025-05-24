@@ -1,12 +1,12 @@
 const express = require('express');
 const app = express();
 const path = require('path');
-const db = require('./models'); // Your database models setup (from Day 6)
-const bcrypt = require('bcryptjs'); // Day 7: Import bcryptjs for password hashing
+const db = require('./models'); // Your database models setup
+const bcrypt = require('bcryptjs'); // For password hashing
 
-// Day 8: Session Management Imports
+// Session Management Imports
 const session = require('express-session');
-const SequelizeStore = require('connect-session-sequelize')(session.Store); // Import and initialize
+const SequelizeStore = require('connect-session-sequelize')(session.Store);
 
 // --- MIDDLEWARE ---
 
@@ -26,15 +26,15 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 
 
-// Day 8: Configure Sequelize Store for sessions
+// Configure Sequelize Store for sessions
 const sessionStore = new SequelizeStore({
     db: db.sequelize, // Use your existing Sequelize connection
-    tableName: 'Sessions' // The table you created in Task 3
+    tableName: 'Sessions' // The table you created for sessions
 });
 
-// Day 8: Configure and use express-session middleware
+// Configure and use express-session middleware
 app.use(session({
-    secret: 'YOUR_VERY_STRONG_RANDOM_SECRET_KEY_HERE', // <--- IMPORTANT: REPLACE THIS!
+    secret: '78965', // <--- IMPORTANT: REPLACE THIS!
     // Example: 'df12b6a9c7e0f8d1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5' (a long random string)
     store: sessionStore, // Use the Sequelize store for persistence
     resave: false, // Don't save session if unmodified
@@ -45,11 +45,10 @@ app.use(session({
     }
 }));
 
-// Day 8: Sync the session store (creates the Sessions table if it doesn't exist)
-// This line can be kept, but the migration in Task 3 is the primary way we create the table.
+// Sync the session store (creates the Sessions table if it doesn't exist)
 sessionStore.sync();
 
-// Day 8: Authentication Middleware (from Task 6)
+// Authentication Middleware
 function isAuthenticated(req, res, next) {
     if (req.session.userId) { // Check if user ID exists in the session
         next(); // User is authenticated, proceed to the next middleware/route handler
@@ -62,7 +61,7 @@ function isAuthenticated(req, res, next) {
 
 // --- ROUTES ---
 
-// GET route for the home page (Updated for Day 8, Task 9 anticipation)
+// GET route for the home page
 app.get('/', (req, res) => {
   res.render('home', {
       // Pass loggedIn and username to the EJS template for conditional rendering
@@ -71,12 +70,12 @@ app.get('/', (req, res) => {
   });
 });
 
-// GET route for the registration page (Day 5/6 setup)
+// GET route for the registration page
 app.get('/register', (req, res) => {
   res.render('register', { error: null });
 });
 
-// POST route for user registration (Day 7, Task 4: Password Hashing)
+// POST route for user registration
 app.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -87,7 +86,7 @@ app.post('/register', async (req, res) => {
     const newUser = await db.User.create({
       username,
       email,
-      passwordHash: hashedPassword,
+      passwordHash: hashedPassword, // Using passwordHash to match database
     });
 
     console.log('User registered successfully:', newUser.username);
@@ -103,7 +102,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// GET route for the login page (Day 7, Task 5)
+// GET route for the login page
 app.get('/login', (req, res) => {
   const registered = req.query.registered === 'true'; // Check if redirected from successful registration
   const authRequired = req.query.auth_required === 'true'; // Check if redirected for authentication
@@ -118,7 +117,7 @@ app.get('/login', (req, res) => {
   res.render('login', { error: errorMessage, registered: registered });
 });
 
-// POST route for user login (Day 7, Task 6 & Day 8, Task 5: Session Storage)
+// POST route for user login
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
@@ -131,7 +130,6 @@ app.post('/login', async (req, res) => {
         ]
       }
     });
- console.log("DEBUG: User object retrieved from DB:", user);
 
     if (!user) {
       console.log(`Login failed: User '${username}' not found.`);
@@ -143,19 +141,12 @@ app.post('/login', async (req, res) => {
     if (passwordMatch) {
       console.log(`Login successful for user: ${user.username}`);
 
-      // Day 8, Task 5: Store user information in the session
       req.session.userId = user.id;
       req.session.username = user.username; // Store username for display
 
-      console.log("DEBUG LOGIN: User data stored in session:");
-      console.log("DEBUG LOGIN: req.session.userId =", req.session.userId);
-      console.log("DEBUG LOGIN: req.session.username =", req.session.username);
-      // It's good practice to save the session explicitly before redirecting
-     
       req.session.save((err) => {
           if (err) {
               console.error('Error saving session:', err);
-              // Handle session save error, e.g., redirect to login with error
               return res.render('login', { error: 'Login failed due to session issue.', registered: false });
           }
           res.redirect('/dashboard'); // Redirect to the dashboard on success
@@ -172,32 +163,279 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// GET route for the dashboard page (Day 7, Task 7 & Day 8, Task 7: Protected Route)
-// 'isAuthenticated' middleware ensures only logged-in users can access this
+// GET route for the dashboard page
 app.get('/dashboard', isAuthenticated, (req, res) => {
- console.log("DEBUG: Accessing /dashboard route.");
- console.log("DEBUG: req.session.userId:", req.session.userId);
- console.log("DEBUG: req.session.username:", req.session.username); // Check if username exists
- console.log("DEBUG: Data being passed to dashboard.ejs:", { username: req.session.username || 'User' });
-  // We can access req.session.username here because it was stored during login
   res.render('dashboard', { username: req.session.username || 'User' });
 });
 
-// NEW: GET route for logout (Day 8, Task 8)
+// GET route for the User Profile page
+app.get('/profile', isAuthenticated, async (req, res) => {
+    try {
+        const user = await db.User.findByPk(req.session.userId);
+
+        if (!user) {
+            console.warn('User not found for session ID:', req.session.userId);
+            req.session.destroy(err => {
+                if (err) console.error('Error destroying session:', err);
+                res.redirect('/login?error=Invalid session, please log in again.');
+            });
+            return;
+        }
+
+        res.render('profile', { user: user });
+
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+        res.render('profile', { user: null, error: 'Could not load profile data.' });
+    }
+});
+
+// GET route for the Edit Profile form
+app.get('/profile/edit', isAuthenticated, async (req, res) => {
+    try {
+        const user = await db.User.findByPk(req.session.userId);
+
+        if (!user) {
+            req.session.destroy(err => {
+                if (err) console.error('Error destroying session:', err);
+                res.redirect('/login?error=Session invalid, please log in again.');
+            });
+            return;
+        }
+
+        res.render('edit-profile', { user: user, error: null, success: null });
+
+    } catch (error) {
+        console.error('Error loading edit profile form:', error);
+        res.render('edit-profile', { user: null, error: 'Could not load profile for editing.' });
+    }
+});
+
+// POST route to handle profile updates
+app.post('/profile/edit', isAuthenticated, async (req, res) => {
+    const { username, email, newPassword, confirmNewPassword } = req.body;
+    const userId = req.session.userId;
+    let errors = [];
+
+    try {
+        const user = await db.User.findByPk(userId);
+
+        if (!user) {
+            console.error('Attempted to edit profile for non-existent user:', userId);
+            req.session.destroy(err => {
+                if (err) console.error('Error destroying session:', err);
+                res.redirect('/login?error=Session invalid, please log in again.');
+            });
+            return;
+        }
+
+        // --- Server-Side Validation ---
+        if (!username || username.trim() === '') {
+            errors.push('Username cannot be empty.');
+        }
+        if (!email || email.trim() === '') {
+            errors.push('Email cannot be empty.');
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            errors.push('Please enter a valid email address.');
+        }
+
+        if (username && username !== user.username) {
+            const existingUserWithUsername = await db.User.findOne({ where: { username: username } });
+            if (existingUserWithUsername && existingUserWithUsername.id !== user.id) {
+                errors.push('This username is already taken by another user.');
+            }
+        }
+
+        if (email && email !== user.email) {
+            const existingUserWithEmail = await db.User.findOne({ where: { email: email } });
+            if (existingUserWithEmail && existingUserWithEmail.id !== user.id) {
+                errors.push('This email is already registered to another account.');
+            }
+        }
+
+        let hashedPassword = user.passwordHash;
+
+        if (newPassword) {
+            if (newPassword.length < 6) {
+                errors.push('New password must be at least 6 characters long.');
+            }
+            if (newPassword !== confirmNewPassword) {
+                errors.push('New password and confirmation do not match.');
+            } else {
+                const salt = await bcrypt.genSalt(10);
+                hashedPassword = await bcrypt.hash(newPassword, salt);
+            }
+        } else if (confirmNewPassword) {
+            errors.push('Please enter your new password in both fields, or leave both blank.');
+        }
+
+        // --- If Validation Fails ---
+        if (errors.length > 0) {
+            return res.render('edit-profile', {
+                user: user,
+                error: errors.join('<br>'),
+                success: null
+            });
+        }
+
+        // --- If Validation Passes ---
+        user.username = username;
+        user.email = email;
+
+        if (newPassword && newPassword === confirmNewPassword) {
+            user.passwordHash = hashedPassword;
+        }
+
+        await user.save();
+
+        if (req.session.username !== user.username) {
+            req.session.username = user.username;
+        }
+
+        console.log(`User ${user.username} profile updated successfully.`);
+        res.render('edit-profile', {
+            user: user,
+            success: 'Profile updated successfully!',
+            error: null
+        });
+
+    } catch (error) {
+        console.error('Error updating user profile:', error);
+        res.render('edit-profile', {
+            user: req.session.userId ? await db.User.findByPk(req.session.userId) : null,
+            error: 'An unexpected error occurred while updating your profile. Please try again.',
+            success: null
+        });
+    }
+});
+
+
+// GET route for logout
 app.get('/logout', (req, res) => {
-    // Destroy the session data from the store
     req.session.destroy((err) => {
         if (err) {
             console.error('Error destroying session:', err);
-            // If there's an error, maybe just redirect to home/login without clearing cookie
             return res.redirect('/dashboard');
         }
-        // Clear the session cookie from the user's browser
-        // 'connect.sid' is the default name for the session cookie
         res.clearCookie('connect.sid');
         console.log('User logged out successfully.');
-        res.redirect('/'); // Redirect to the home page after logout
+        res.redirect('/');
     });
+});
+
+
+// Day 10: GET route for discovering other users (Task 1 & 2)
+app.get('/users', isAuthenticated, async (req, res) => {
+    try {
+        // First, fetch the currently logged-in user with their 'Following' association
+        const loggedInUser = await db.User.findByPk(req.session.userId, {
+            include: [{
+                model: db.User,
+                as: 'Following',       // This alias matches the 'as' in models/user.js
+                attributes: ['id']     // We only need the IDs of users they are following
+            }]
+        });
+
+        if (!loggedInUser) {
+            req.session.destroy(err => {
+                if (err) console.error('Error destroying session:', err);
+                res.redirect('/login?error=Session invalid, please log in again.');
+            });
+            return;
+        }
+
+        // Extract IDs of users the logged-in user is currently following
+        const followingIds = loggedInUser.Following.map(user => user.id);
+
+        // Fetch all other users from the database EXCEPT the current logged-in user
+        const allUsers = await db.User.findAll({
+            where: {
+                id: {
+                    [db.Sequelize.Op.ne]: req.session.userId // Op.ne stands for "not equal"
+                }
+            },
+            attributes: ['id', 'username', 'email', 'createdAt'], // Only fetch necessary attributes
+            order: [['username', 'ASC']] // Optional: Order users by username
+        });
+
+        // Render the users.ejs template and pass the data
+        res.render('users', {
+            users: allUsers,
+            loggedInUserId: req.session.userId, // Pass current user's ID
+            followingIds: followingIds,         // Pass the list of IDs they are following
+            error: req.query.error || null,     // Pass error messages from redirects
+            success: req.query.success || null  // Pass success messages from redirects
+        });
+
+    } catch (error) {
+        console.error('Error fetching users for discovery:', error);
+        res.render('users', {
+            users: [], // Pass an empty array on error
+            loggedInUserId: req.session.userId,
+            followingIds: [], // Ensure an empty array on error
+            error: 'Could not load users at this time.',
+            success: null
+        });
+    }
+});
+
+
+// Day 10: POST route to handle follow/unfollow actions (Task 4)
+app.post('/users/toggle-follow', isAuthenticated, async (req, res) => {
+    const { targetUserId } = req.body; // ID of the user being followed/unfollowed
+    const followerId = req.session.userId; // ID of the currently logged-in user
+
+    // Basic validation for targetUserId
+    if (!targetUserId || isNaN(targetUserId)) {
+        console.error('Invalid targetUserId received for toggle-follow:', targetUserId);
+        return res.redirect('/users?error=Invalid user specified.');
+    }
+
+    try {
+        // Fetch the follower (current logged-in user) with their current following list
+        const follower = await db.User.findByPk(followerId, {
+            include: [{
+                model: db.User,
+                as: 'Following',
+                attributes: ['id'] // Only need IDs for checking existing relationship
+            }]
+        });
+
+        // Fetch the user being followed/unfollowed
+        const following = await db.User.findByPk(targetUserId);
+
+        // Check if both users exist
+        if (!follower || !following) {
+            console.error(`Follower (ID: ${followerId}) or Following (ID: ${targetUserId}) user not found.`);
+            return res.redirect('/users?error=User not found for action.');
+        }
+
+        // Prevent a user from following themselves
+        if (follower.id === following.id) {
+            console.warn('User attempted to follow themselves.');
+            return res.redirect('/users?error=You cannot follow yourself.');
+        }
+
+        // Determine if the follower is currently following the target user
+        // .some() checks if any element in the Following array satisfies the condition
+        const isCurrentlyFollowing = follower.Following.some(user => user.id === following.id);
+
+        if (isCurrentlyFollowing) {
+            // If already following, then unfollow
+            await follower.removeFollowing(following); // Sequelize method to remove association
+            console.log(`User ${follower.username} unfollowed ${following.username}`);
+            res.redirect('/users?success=User unfollowed!');
+        } else {
+            // If not following, then follow
+            await follower.addFollowing(following); // Sequelize method to add association
+            console.log(`User ${follower.username} followed ${following.username}`);
+            res.redirect('/users?success=User followed!');
+        }
+
+    } catch (error) {
+        console.error('Error toggling follow status:', error);
+        res.redirect('/users?error=An unexpected error occurred while updating follow status.');
+    }
 });
 
 
@@ -207,8 +445,6 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  // Sync database models (creates tables if they don't exist)
-  // For production, you typically run migrations explicitly.
   db.sequelize.sync()
     .then(() => {
       console.log('Database synced successfully');

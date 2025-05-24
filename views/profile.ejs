@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | linkedln-clone-gemini</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>My Profile</h1>
+
+        <% if (user) { %>
+            <p><strong>Username:</strong> <%= user.username %></p>
+            <p><strong>Email:</strong> <%= user.email %></p>
+            <p><strong>Member Since:</strong> <%= user.createdAt.toLocaleDateString() %></p>
+
+            <div class="links">
+                <p><a href="/profile/edit" class="btn">Edit Profile</a></p>
+                <p><a href="/dashboard">Back to Dashboard</a></p>
+                <p><a href="/logout" class="btn">Logout</a></p>
+            </div>
+        <% } else { %>
+            <p>User profile could not be loaded.</p>
+            <p><a href="/login" class="btn">Log In</a></p>
+        <% } %>
+    </div>
+</body>
+</html>

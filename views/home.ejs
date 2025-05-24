@@ -3,22 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to LinkedIn Mimic</title>
+    <title>Welcome to linkedln-clone-gemini</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Welcome to LinkedIn Mimic!</h1>
-        <p>Your simplified social networking experience.</p>
-
-        <div class="links">
-            <% if (loggedIn) { %> <p>Welcome back, <%= username %>! <a href="/dashboard" class="btn">Dashboard</a></p>
-                <p><a href="/logout" class="btn">Logout</a></p>
-            <% } else { %>
-                <p>Already have an account? <a href="/login" class="btn">Login</a></p>
-                <p>New here? <a href="/register" class="btn">Register</a></p>
-            <% } %>
-        </div>
+        <h1>Welcome to linkedln-clone-gemini!</h1>
+        <% if (loggedIn) { %>
+            <p>Hello, <%= username %>!</p>
+            <div class="links">
+                <p><a href="/dashboard" class="btn">Go to Dashboard</a></p>
+                <p><a href="/profile" class="btn">My Profile</a></p>
+                <p><a href="/logout" class="btn btn-danger">Logout</a></p>
+            </div>
+        <% } else { %>
+            <p>Please register or log in to continue.</p>
+            <div class="links">
+                <p><a href="/register" class="btn">Register</a></p>
+                <p><a href="/login" class="btn">Login</a></p>
+            </div>
+        <% } %>
     </div>
 </body>
 </html>
